@@ -1,24 +1,23 @@
 import scrapy
 
-from scrapy.loader import ItemLoader
-from k4bum.items import Product
-
+from k4bum.items import ProductLoader
 
 TEXT_SEL = '::text'
-CATEGORIES = '.bot-categoria a'
-PRODUCT_DETAILS = '//div[@class="listagem-bots"]/a'
-PAGE_BAR = '.listagem-paginacao'
-NEXT_PAGE = 'td:last-child a'
-PROD_BRAND = '.marcas img::attr(alt)'
+ATTR_SEL = '::attr(%s)'
+PRODUCT_CATEGORIES = '.bot-categoria a'
+PRODUCT_DETAILS = '.listagem-bots > a'
+NEXT_PAGE = '.listagem-paginacao a'
 PROD_NAME = '.titulo_det' + TEXT_SEL
-UNAVAILABLE = '.bot_comprar a'
-REVIEW_COUNT = '.avaliacao meta:last-child::attr(content)'
-RATING_VALUE = '.avaliacao meta:first-child::attr(content)'
-STARS_COMMENTS = '.opiniao_box .H-estrelas::attr(class)'
-DISCOUNT_AMOUNT = 'div.preco_desconto font' + TEXT_SEL
-PRICE_DISCOUNT = 'span.preco_desconto strong' + TEXT_SEL
-PRICE_REAL = '.preco_normal' + TEXT_SEL
-PARCEL_TABLE = '.ParcelamentoCartao ul li *' + TEXT_SEL
+PROD_BRAND = 'meta[itemprop="brand"]' + ATTR_SEL % 'content'
+PROD_STARS = 'meta[itemprop="ratingValue"]' + ATTR_SEL % 'content'
+PROD_REVIEWS = 'meta[itemprop="reviewCount"]' + ATTR_SEL % 'content'
+PROD_COMMENTS = '.opiniao_box .H-estrelas' + ATTR_SEL % 'class'
+PROD_PRICE = '.preco_normal' + TEXT_SEL
+PROD_PRICE_2 = 'span.preco_desconto strong' + TEXT_SEL
+PROD_DISCOUNT = 'div.preco_desconto font' + TEXT_SEL
+PARCEL_TABLE = '.ParcelamentoCartao ul *' + TEXT_SEL
+PROD_DESC = 'p[itemprop="description"]' + TEXT_SEL
+PROD_SPEC_TABLE = '.content_tab:nth-child(2)'
 
 
 class Crawl4r(scrapy.Spider):
@@ -26,57 +25,46 @@ class Crawl4r(scrapy.Spider):
     allowed_domains = ['k4bum.com.br']
     start_urls = ['https://www.k4bum.com.br']
 
-    def __init__(self, category=None, *args, **kwargs):
+    def __init__(self, cats=None, *args, **kwargs):
         super(Crawl4r, self).__init__(*args, **kwargs)
-        self.category = category
+        if cats:
+            self.cats = set(cats.split(','))
 
     def parse(self, response):
-        for category in response.css(CATEGORIES):
-            if self.category == category.css(TEXT_SEL).get():
-                yield scrapy.Request(
-                    url=response.urljoin(category.attrib['href'] + '?ordem=5&limite=100&pagina=1&string='),
-                    callback=self.parse_category,
-                    meta={'page': 1})
+        all_cats = response.css(PRODUCT_CATEGORIES)
+        for cat in all_cats:
+            title = cat.css(TEXT_SEL).get()
+            if title in self.cats:
+                yield scrapy.Request(response.urljoin(cat.attrib['href'] + '?ordem=5&limite=100&pagina=1&string='),
+                                     self.parse_product_list, meta={'cat': title})
 
-    def parse_category(self, response):
-        products = response.xpath(PRODUCT_DETAILS)
-        self.logger.info('Page %d - %d' % (response.meta['page'], len(products)))
-        for product in products:
-            yield scrapy.Request(url=product.attrib['href'], callback=self.parse_product)
+    def parse_product_list(self, response):
+        for product in response.css(PRODUCT_DETAILS):
+            yield scrapy.Request(product.attrib['href'], self.parse_product,
+                                 meta={'id': product.attrib['data-id'], 'cat': response.meta['cat']})
 
-        next_page = response.css(PAGE_BAR)[0].css(NEXT_PAGE)
-        if next_page:
-            yield scrapy.Request(url=response.urljoin(next_page.attrib['href']),
-                                 callback=self.parse_category,
-                                 meta={'page': response.meta['page'] + 1})
+        for url in response.css(NEXT_PAGE):
+            yield scrapy.Request(response.urljoin(url.attrib['href']), self.parse_product_list,
+                                 meta={'cat': response.meta['cat']})
 
     def parse_product(self, response):
-        il = ItemLoader(item=Product(), response=response)
-        il.add_css('name', PROD_NAME)
-        il.add_css('brand', PROD_BRAND)
-        il.add_css('available', UNAVAILABLE)
+        pl = ProductLoader(response=response)
+        pl.add_value('id', response.meta['id'])
+        pl.add_css('name', PROD_NAME)
+        pl.add_css('brand', PROD_BRAND)
+        pl.add_value('category', response.meta['cat'])
 
-        il.add_css('stars', RATING_VALUE)
-        il.add_css('ratings', REVIEW_COUNT)
-        il.add_css('real_stars', STARS_COMMENTS)
+        pl.add_css('stars', PROD_STARS)
+        pl.add_css('ratings', PROD_REVIEWS)
+        pl.add_css('comment_table', PROD_COMMENTS)
 
-        il.add_css('price', PRICE_REAL)
-        il.add_css('price_boleto', PRICE_DISCOUNT)
-        il.add_css('discount_boleto', DISCOUNT_AMOUNT)
-        il.add_css('parcel_table', PARCEL_TABLE)
+        pl.add_css('price', PROD_PRICE)
+        pl.add_css('price_boleto', PROD_PRICE_2)
+        pl.add_css('discount_boleto', PROD_DISCOUNT)
+        pl.add_value('parcel_table', response.css(PARCEL_TABLE).getall())
 
-        il.add_css('description', 'p[itemprop="description"]' + TEXT_SEL)
-        il.add_css('tech_spec', '')
-        il.add_css('warranty', '')
+        pl.add_css('description', PROD_DESC)
+        pl.add_css('tech_spec', PROD_SPEC_TABLE + ' p *' + TEXT_SEL)
+        pl.add_css('warranty', PROD_SPEC_TABLE + TEXT_SEL)
 
-
-'''
-p - description
-p - barra img - ignore
-commented p (barra img)
-p - title - ignore
-
-
-redirect auto throttle output to file
- 
-'''
+        yield pl.load_item()

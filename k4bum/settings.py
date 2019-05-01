@@ -30,10 +30,10 @@ EXTENSIONS = {
 }
 
 ITEM_PIPELINES = {
-    'scrapy_mongodb.MongoDBPipeline': 300,
+    'k4bum.pipelines.MongoDBBrandCollectionsPipeline': 300,
 }
 
 MONGODB_URI = 'mongodb://localhost:27017'
 MONGODB_DATABASE = 'k4bum'
-MONGODB_COLLECTION = 'items'
-MONGODB_SEPARATE_COLLECTIONS = True
+MONGODB_ADD_TIMESTAMP = True
+MONGODB_UNIQUE_KEY = 'id'
