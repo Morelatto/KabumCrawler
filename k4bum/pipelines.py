@@ -7,6 +7,7 @@ def mongo_name_format(s):
 
 
 # TODO query by brand
+# TODO split by item type (offer)
 class MongoDBBrandCollectionsPipeline(MongoDBPipeline):
     def __init__(self, **kwargs):
         super(MongoDBBrandCollectionsPipeline, self).__init__(**kwargs)

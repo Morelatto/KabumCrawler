@@ -29,11 +29,11 @@ EXTENSIONS = {
     'scrapy.extensions.telnet.TelnetConsole': None,
 }
 
-ITEM_PIPELINES = {
-    'k4bum.pipelines.MongoDBBrandCollectionsPipeline': 300,
-}
-
-MONGODB_URI = 'mongodb://localhost:27017'
-MONGODB_DATABASE = 'k4bum'
-MONGODB_ADD_TIMESTAMP = True
-MONGODB_UNIQUE_KEY = 'id'
+# ITEM_PIPELINES = {
+#     'k4bum.pipelines.MongoDBBrandCollectionsPipeline': 300,
+# }
+#
+# MONGODB_URI = 'mongodb://localhost:27017'
+# MONGODB_DATABASE = 'k4bum'
+# MONGODB_ADD_TIMESTAMP = True
+# MONGODB_UNIQUE_KEY = 'id'
