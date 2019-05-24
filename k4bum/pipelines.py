@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 from scrapy_mongodb import MongoDBPipeline
 
+from k4bum.items import Offer
+
 
 def mongo_name_format(s):
     return '_'.join(s.split()).lower()
@@ -14,7 +16,7 @@ class MongoDBBrandCollectionsPipeline(MongoDBPipeline):
         self.curr_cat = None
 
     def process_item(self, item, spider):
-        self.curr_cat = mongo_name_format(item['category'])
+        self.curr_cat = 'offer' if isinstance(item, Offer) else mongo_name_format(item['category'])
         super(MongoDBBrandCollectionsPipeline, self).process_item(item, spider)
 
     def get_collection(self, name):

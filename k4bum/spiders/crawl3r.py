@@ -46,9 +46,8 @@ class Crawl4r(scrapy.Spider):
         all_cats = response.css(PRODUCT_CATEGORIES)
         for cat in all_cats:
             title = cat.css(TEXT_SEL).get()
-            if title in self.cats:
-                yield scrapy.Request(response.urljoin(cat.attrib['href'] + '?ordem=5&limite=100&pagina=1&string='),
-                                     self.parse_product_list, meta={'cat': title})
+            yield scrapy.Request(response.urljoin(cat.attrib['href'] + '?ordem=5&limite=100&pagina=1&string='),
+                                 self.parse_product_list, meta={'cat': title})
 
     def parse_product_list(self, response):
         meta = {'cat': response.meta['cat']}

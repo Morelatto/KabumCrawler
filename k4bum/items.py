@@ -70,7 +70,7 @@ class Product(scrapy.Item):
 
 
 class Offer(scrapy.Item):
-    product_id = scrapy.Field()
+    id = scrapy.Field()
 
     end_date = scrapy.Field()
     discount = scrapy.Field()
