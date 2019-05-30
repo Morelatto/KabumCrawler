@@ -1,11 +1,10 @@
 # -*- coding: utf-8 -*-
 import re
-
 import scrapy
 
 from lxml.html.clean import unicode
 from scrapy.loader import ItemLoader
-from scrapy.loader.processors import TakeFirst, Compose, MapCompose, Identity
+from scrapy.loader.processors import TakeFirst, Compose, MapCompose, Identity, Join
 
 IS_CURRENCY_RE = r'([\d+.]*\d+,\d+)'
 
@@ -45,7 +44,7 @@ def parse_tech_spec(table):
                 res[key][-1] += ' ' + row
             else:
                 res[key].append(row)
-        else:
+        elif row:
             get = res.get(RES_DEFAULT_KEY, list())
             get.append(row)
             res[RES_DEFAULT_KEY] = get
@@ -93,6 +92,7 @@ class ProductLoader(ItemLoader):
     default_input_processor = clean_tags
     default_output_processor = TakeFirst()
 
+    category_out = Join('/')
     stars_in = to_int
     ratings_in = to_int
     comment_table_in = MapCompose(lambda cls: int(cls[-1]))  # float?

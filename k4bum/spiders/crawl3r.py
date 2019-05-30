@@ -1,11 +1,14 @@
+import json
 import scrapy
 
 from k4bum.items import ProductLoader, PricesLoader, OfferLoader
 
+K4BUM = 'k4bum.com.br'
+
 TEXT_SEL = '::text'
 ATTR_SEL = '::attr(%s)'
 # prod list
-PRODUCT_CATEGORIES = '.bot-categoria a'
+PRODUCT_CATEGORY = '.links_det a' + TEXT_SEL
 PRODUCT_DETAILS = '.listagem-bots > a'
 NEXT_PAGE = '.listagem-paginacao a'
 # prod
@@ -32,32 +35,27 @@ OFFER_DISCOUNT = '.q1' + TEXT_SEL
 OFFER_OLD_PRICE = '.preco_antigo-cm' + TEXT_SEL
 
 
-class Crawl4r(scrapy.Spider):
-    name = 'crawl4r'
-    allowed_domains = ['k4bum.com.br']
-    start_urls = ['https://www.k4bum.com.br']
+class K4bumCrawl4r(scrapy.Spider):
+    name = 'k4bum'
+    allowed_domains = [K4BUM]
 
-    def __init__(self, cats=None, *args, **kwargs):
-        super(Crawl4r, self).__init__(*args, **kwargs)
-        if cats:
-            self.cats = set(cats.split(','))
+    def __init__(self, cat=None, all_cats=None, *args, **kwargs):
+        super(K4bumCrawl4r, self).__init__(*args, **kwargs)
+        self.urls = [cat] if cat else json.loads(all_cats)
+
+    def start_requests(self):
+        for url in self.urls:
+            yield scrapy.Request('https://www.{}/{}?ordem=5&limite=100&pagina=1&string='.format(K4BUM, url))
 
     def parse(self, response):
-        all_cats = response.css(PRODUCT_CATEGORIES)
-        for cat in all_cats:
-            title = cat.css(TEXT_SEL).get()
-            yield scrapy.Request(response.urljoin(cat.attrib['href'] + '?ordem=5&limite=100&pagina=1&string='),
-                                 self.parse_product_list, meta={'cat': title})
-
-    def parse_product_list(self, response):
-        meta = {'cat': response.meta['cat']}
+        meta = {'cat': response.css(PRODUCT_CATEGORY).getall()}
         for product in response.css(PRODUCT_DETAILS):
             meta['id'] = product.attrib['data-id']
             meta['prod_url'] = product.attrib['href']
             yield scrapy.Request(product.attrib['href'], self.parse_product, meta=meta)
 
         for url in response.css(NEXT_PAGE):
-            yield scrapy.Request(response.urljoin(url.attrib['href']), self.parse_product_list, meta=meta)
+            yield scrapy.Request(response.urljoin(url.attrib['href']))
 
     def parse_product(self, response):
         pl = ProductLoader(response=response)
@@ -83,7 +81,7 @@ class Crawl4r(scrapy.Spider):
 
     def get_offer(self, response):
         ol = OfferLoader(response=response)
-        ol.add_value('product_id', response.meta['id'])
+        ol.add_value('id', response.meta['id'])
         ol.add_value('end_date', filter(lambda x: x if 'until' in x else None, response.css('script').getall()))
         ol.add_css('discount', OFFER_DISCOUNT)
         ol.add_css('amount', OFFER_AMOUNT)
