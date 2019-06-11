@@ -1,9 +1,9 @@
 import json
 import scrapy
 
-from k4bum.items import ProductLoader, PricesLoader, OfferLoader
+from kabum.items import ProductLoader, PricesLoader, OfferLoader
 
-K4BUM = 'k4bum.com.br'
+KABUM = 'kabum.com.br'
 
 TEXT_SEL = '::text'
 ATTR_SEL = '::attr(%s)'
@@ -35,17 +35,17 @@ OFFER_DISCOUNT = '.q1' + TEXT_SEL
 OFFER_OLD_PRICE = '.preco_antigo-cm' + TEXT_SEL
 
 
-class K4bumCrawl4r(scrapy.Spider):
-    name = 'k4bum'
-    allowed_domains = [K4BUM]
+class KabumSpider(scrapy.Spider):
+    name = 'kabum'
+    allowed_domains = [KABUM]
 
-    def __init__(self, cat=None, all_cats=None, *args, **kwargs):
-        super(K4bumCrawl4r, self).__init__(*args, **kwargs)
+    def __init__(self, cat=None, all_cats=None, **kwargs):
+        super().__init__(**kwargs)
         self.urls = [cat] if cat else json.loads(all_cats)
 
     def start_requests(self):
         for url in self.urls:
-            yield scrapy.Request('https://www.{}/{}?ordem=5&limite=100&pagina=1&string='.format(K4BUM, url))
+            yield scrapy.Request('https://www.{}/{}?ordem=5&limite=100&pagina=1&string='.format(KABUM, url))
 
     def parse(self, response):
         meta = {'cat': response.css(PRODUCT_CATEGORY).getall()}

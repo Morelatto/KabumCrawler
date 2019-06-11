@@ -9,19 +9,19 @@ from docopt import docopt
 from parsel import Selector
 from scrapy import cmdline
 
-K4BUM = 'https://www.k4bum.com.br/'
+KABUM = 'https://www.kabum.com.br/'
 
 headers = {
     'User-Agent':
         'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/73.0.3683.86 Safari/537.36'
 }
 
-cmd = ["scrapy", "crawl", "k4bum", "-a"]
+cmd = ["scrapy", "crawl", "kabum", "-a"]
 
 
 def get_all_cats():
     all_cats, i = [], 1
-    r = requests.get(K4BUM, headers=headers)
+    r = requests.get(KABUM, headers=headers)
     if r.status_code == 200:
         sel = Selector(text=r.text)
         for cat in sel.css('.bot-categoria a'):

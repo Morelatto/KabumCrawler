@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from scrapy_mongodb import MongoDBPipeline
 
-from k4bum.items import Offer
+from kabum.items import Offer
 
 
 def mongo_name_format(s):
