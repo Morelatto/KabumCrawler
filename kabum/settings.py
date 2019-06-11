@@ -17,12 +17,12 @@ EXTENSIONS = {
     'scrapy.extensions.telnet.TelnetConsole': None,
 }
 
-# ITEM_PIPELINES = {
-#     'scrapy_mongodb.MongoDBPipeline': 300,
-# }
-#
-# MONGODB_URI = 'mongodb://localhost:27017'
-# MONGODB_DATABASE = 'kabum'
-# MONGODB_COLLECTION = 'products'
-# MONGODB_ADD_TIMESTAMP = True
-# MONGODB_UNIQUE_KEY = 'id'
+ITEM_PIPELINES = {
+    'scrapy_mongodb.MongoDBPipeline': 300,
+}
+
+MONGODB_URI = 'mongodb://localhost:27017'
+MONGODB_DATABASE = 'kabum'
+MONGODB_COLLECTION = 'products'
+MONGODB_ADD_TIMESTAMP = True
+MONGODB_UNIQUE_KEY = 'id'
