@@ -39,9 +39,9 @@ class KabumSpider(scrapy.Spider):
     name = 'kabum'
     allowed_domains = [KABUM]
 
-    def __init__(self, cat=None, all_cats=None, **kwargs):
+    def __init__(self, cats='', **kwargs):
         super().__init__(**kwargs)
-        self.urls = [cat] if cat else json.loads(all_cats)
+        self.urls = cats.split(';')
 
     def start_requests(self):
         for url in self.urls:
