@@ -18,10 +18,9 @@ EXTENSIONS = {
 }
 
 ITEM_PIPELINES = {
-    'scrapy_mongodb.MongoDBPipeline': 300,
+    'kabum.pipelines.MongoDBBrandCollectionsPipeline': 300,
 }
 
-MONGODB_URI = 'mongodb://localhost:27017'
 MONGODB_DATABASE = 'kabum'
 MONGODB_COLLECTION = 'products'
 MONGODB_ADD_TIMESTAMP = True

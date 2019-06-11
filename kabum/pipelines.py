@@ -4,8 +4,9 @@ from scrapy_mongodb import MongoDBPipeline
 from kabum.items import Offer
 
 
-def mongo_name_format(s):
-    return '_'.join(s.split()).lower()
+def mongo_name_format(s, sep='_'):
+    s.replace(' ', sep).replace('/', sep)
+    return s.replace(' ', sep).replace('/', sep).lower()
 
 
 # TODO query by brand
