@@ -1,26 +1,22 @@
 # -*- coding: utf-8 -*-
-import re
 import scrapy
 
-from lxml.html.clean import unicode
 from scrapy.loader import ItemLoader
-from scrapy.loader.processors import TakeFirst, Compose, MapCompose, Identity, Join
-
-IS_CURRENCY_RE = r'([\d+.]*\d+,\d+)'
+from scrapy.loader.processors import TakeFirst, MapCompose
 
 SPEC_TABLE_END = '» Políticas do Site'
 SPEC_TABLE_START = 'ESPECIFICAÇÕES TÉCNICAS'
 
 RES_DEFAULT_KEY = 'other'
 
-clean_tags = MapCompose(unicode.strip)
-to_int = MapCompose(lambda i: re.findall(r'\d+', i), int)
+parse_float_or_int = MapCompose(lambda x: process_float_or_int(x))
 
 
-def get_currency(s):
-    m = re.findall(IS_CURRENCY_RE, s)
-    if m:
-        return m[0]
+def process_float_or_int(value):
+    try:
+        return eval(value)
+    except:
+        return value
 
 
 def parse_comments(table, rows=5):
@@ -51,71 +47,62 @@ def parse_tech_spec(table):
     return res
 
 
+class Prices(scrapy.Item):
+    price = scrapy.Field()
+    price_discount = scrapy.Field()
+    price_prime = scrapy.Field()
+    price_discount_prime = scrapy.Field()
+    discount = scrapy.Field()
+    discount_prime = scrapy.Field()
+    old_price = scrapy.Field()
+
+
+class PricesLoader(ItemLoader):
+    default_item_class = Prices
+    default_input_processor = parse_float_or_int
+    default_output_processor = TakeFirst()
+
+
+class Offer(scrapy.Item):
+    discount = scrapy.Field()
+    amount = scrapy.Field()
+    start_date = scrapy.Field()
+    end_date = scrapy.Field()
+    event = scrapy.Field()
+
+
+class OfferLoader(ItemLoader):
+    default_item_class = Offer
+    default_output_processor = TakeFirst()
+
+    discount_in = process_float_or_int
+    amount_in = process_float_or_int
+
+
 class Product(scrapy.Item):
     id = scrapy.Field()
     name = scrapy.Field()
     brand = scrapy.Field()
     category = scrapy.Field()
-
+    offer = scrapy.Field(serializer=Offer)
+    prices = scrapy.Field(serializer=Prices)
     stars = scrapy.Field()
     ratings = scrapy.Field()
-    comment_table = scrapy.Field()
-
-    prices = scrapy.Field(input_processor=Identity())
-
-    description = scrapy.Field()
-    tech_spec = scrapy.Field()
-    warranty = scrapy.Field()
-
-
-class Offer(scrapy.Item):
-    id = scrapy.Field()
-
-    end_date = scrapy.Field()
-    discount = scrapy.Field()
-    amount = scrapy.Field()
-    sold = scrapy.Field()
-
-    prices = scrapy.Field()
-
-
-class Prices(scrapy.Item):
-    price = scrapy.Field()
-    old_price = scrapy.Field()
-    price_boleto = scrapy.Field()
-    discount_boleto = scrapy.Field()
-    parcel_table = scrapy.Field()
+    image = scrapy.Field()
+    used = scrapy.Field()
+    openbox = scrapy.Field()
+    available = scrapy.Field()
+    url = scrapy.Field()
+    # comment_table = scrapy.Field()
+    # description = scrapy.Field()
+    # tech_spec = scrapy.Field()
+    # warranty = scrapy.Field()
 
 
 class ProductLoader(ItemLoader):
     default_item_class = Product
-    default_input_processor = clean_tags
     default_output_processor = TakeFirst()
 
-    category_out = Join('/')
-    stars_in = to_int
-    ratings_in = to_int
-    comment_table_in = MapCompose(lambda cls: int(cls[-1]))  # float?
-    comment_table_out = Compose(parse_comments, lambda x: parse_comments(x, len(x)), TakeFirst())
-
-    tech_spec_out = Compose(parse_tech_spec)
-
-
-class OfferLoader(ItemLoader):
-    default_item_class = Offer
-    default_input_processor = to_int
-    default_output_processor = TakeFirst()
-
-    end_date_in = Identity()  # TODO regex parsing js
-    discount_in = to_int
-    prices_in = Identity()
-
-
-class PricesLoader(ItemLoader):
-    default_item_class = Prices
-    default_input_processor = clean_tags
-    default_output_processor = Compose(TakeFirst(), get_currency)
-
-    discount_boleto_in = to_int
-    discount_boleto_out = TakeFirst()
-    parcel_table_out = MapCompose(str.strip, lambda x: x if x else None, lambda v: v.split()[2])
+    # comment_table_in = MapCompose(lambda cls: int(cls[-1]))  # float?
+    # comment_table_out = Compose(parse_comments, lambda x: parse_comments(x, len(x)), TakeFirst())
+    # tech_spec_out = Compose(parse_tech_spec)
