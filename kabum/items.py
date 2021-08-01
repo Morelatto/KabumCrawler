@@ -2,7 +2,7 @@
 import scrapy
 
 from scrapy.loader import ItemLoader
-from scrapy.loader.processors import TakeFirst, MapCompose
+from itemloaders.processors import TakeFirst, MapCompose
 
 SPEC_TABLE_END = '» Políticas do Site'
 SPEC_TABLE_START = 'ESPECIFICAÇÕES TÉCNICAS'

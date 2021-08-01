@@ -22,7 +22,7 @@ class KabumSpider(scrapy.Spider):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.start_urls = [kwargs.get('start_url')]
+        self.start_urls = kwargs.get('start_urls')
 
     def start_requests(self):
         for url in self.start_urls:
@@ -52,7 +52,7 @@ class KabumSpider(scrapy.Spider):
 
             response.meta['parameters']['pagina'] += 1
             next_page = f"{response.meta['url']}?{urllib.parse.urlencode(response.meta['parameters'])}"
-            yield scrapy.Request(next_page, meta=response.meta)
+            #yield scrapy.Request(next_page, meta=response.meta)
 
     @classmethod
     def get_offer(cls, offer) -> Offer:
