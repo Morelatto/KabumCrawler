@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-
 BOT_NAME = 'kabum'
 
 SPIDER_MODULES = ['kabum.spiders']
@@ -22,9 +21,10 @@ COOKIES_ENABLED = False
 TELNETCONSOLE_ENABLED = False
 
 ITEM_PIPELINES = {
-    # 'kabum.pipelines.MongoDBBrandCollectionsPipeline': 300,
+    'kabum.pipelines.MongoDBBrandCollectionsPipeline': 300,
 }
 
+MONGODB_URI = ''
 MONGODB_DATABASE = 'kabum'
 MONGODB_COLLECTION = 'products'
 MONGODB_ADD_TIMESTAMP = True

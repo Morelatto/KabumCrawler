@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 import scrapy
 
-from scrapy.loader import ItemLoader
-from itemloaders.processors import TakeFirst, MapCompose
+from itemloaders import ItemLoader
+from itemloaders.processors import Identity, MapCompose, TakeFirst
 
 SPEC_TABLE_END = '» Políticas do Site'
 SPEC_TABLE_START = 'ESPECIFICAÇÕES TÉCNICAS'
@@ -50,10 +50,7 @@ def parse_tech_spec(table):
 class Prices(scrapy.Item):
     price = scrapy.Field()
     price_discount = scrapy.Field()
-    price_prime = scrapy.Field()
-    price_discount_prime = scrapy.Field()
-    discount = scrapy.Field()
-    discount_prime = scrapy.Field()
+    discount_percentage = scrapy.Field()
     old_price = scrapy.Field()
 
 
@@ -64,19 +61,36 @@ class PricesLoader(ItemLoader):
 
 
 class Offer(scrapy.Item):
-    discount = scrapy.Field()
-    amount = scrapy.Field()
-    start_date = scrapy.Field()
-    end_date = scrapy.Field()
-    event = scrapy.Field()
+    price = scrapy.Field()
+    price_discount = scrapy.Field()
+    discount_percentage = scrapy.Field()
+    quantity = scrapy.Field()
+    start_date = scrapy.Field(input_processor=Identity())
+    end_date = scrapy.Field(input_processor=Identity())
 
 
 class OfferLoader(ItemLoader):
     default_item_class = Offer
+    default_input_processor = process_float_or_int
     default_output_processor = TakeFirst()
 
-    discount_in = process_float_or_int
-    amount_in = process_float_or_int
+
+class PaymentInstallment(scrapy.Item):
+    terms = scrapy.Field(input_processor=Identity())
+    installment = scrapy.Field()
+    amount = scrapy.Field()
+    total = scrapy.Field()
+
+
+class PaymentInstallmentLoader(ItemLoader):
+    default_item_class = PaymentInstallment
+    default_input_processor = parse_float_or_int
+    default_output_processor = TakeFirst()
+
+
+class PaymentMethod(scrapy.Item):
+    method = scrapy.Field(output_processor=TakeFirst())
+    installments = scrapy.Field()
 
 
 class Product(scrapy.Item):
@@ -86,9 +100,10 @@ class Product(scrapy.Item):
     category = scrapy.Field()
     offer = scrapy.Field(serializer=Offer)
     prices = scrapy.Field(serializer=Prices)
+    payments = scrapy.Field()
     stars = scrapy.Field()
     ratings = scrapy.Field()
-    image = scrapy.Field()
+    images = scrapy.Field()
     used = scrapy.Field()
     openbox = scrapy.Field()
     available = scrapy.Field()
