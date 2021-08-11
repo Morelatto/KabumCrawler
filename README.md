@@ -1,47 +1,50 @@
 # KabumCrawler
 
-Product crawler for [Kabum](https://kabum.com.br/). Filter and store by category to MongoDB.
+Crawler de produtos para o [Kabum](https://kabum.com.br/). Salva os produtos em um banco MongoDB separando por categoria.
 
-## Requirements
+## Requisitos
+
 * [Scrapy](https://github.com/scrapy/scrapy)
 * [scrapy-mongodb](https://github.com/sebdah/scrapy-mongodb)
 * [requests](https://github.com/kennethreitz/requests)
 * [docopt](https://github.com/docopt/docopt)
 
-## Usage
+## Script
+
+O projeto contém um script que facilita a busca da url de categorias e subcategorias. O crawler pode ser usado sem esse script, porém ele espera o nome das categorias usado internamente no site como parâmetro inicial de busca.
+
 ```
+Usage:
   kabum.py <category>...
   kabum.py --list-categories
   kabum.py -h | --help | --version
-```
 
-## Arguments
-```
-  <category>...         Category to download.
-```
+Arguments:
+  <category>...         Category to download. E.g.: hardware, tv
 
-## Options
-```
+Options:
   --list-categories     List all product categories.
-  -h, --help            Show help message.
+  -h, --help            Show this help message.
   --version             Show version.
  ```
 
-## No MongoDB
-To run without Mongo comment the following lines on settings.py:
+## Rodar sem MongoDB
+
+Para rodar sem salvar os resultados em um banco MongoDB é preciso comentar a seguinte linha no arquivo de configurações kabum/settings.py:
+
 ```
 ITEM_PIPELINES = {
-    'kabum.pipelines.MongoDBBrandCollectionsPipeline': 300,
+    'kabum.pipelines.MongoDBBrandCollectionsPipeline': 100,
 }
-
-MONGODB_DATABASE = 'kabum'
-MONGODB_COLLECTION = 'products'
-MONGODB_ADD_TIMESTAMP = True
-MONGODB_UNIQUE_KEY = 'id'
 ```
 
-Optionally, to save results to file add to settings.py:
+Para salvar os resultados em um json, adicionar as linhas:
+
 ```
-FEED_URI = 'kabum_results.json'
+FEED_URI = 'kabum.json'
 FEED_EXPORT_ENCODING = 'utf-8'
 ```
+
+## License
+
+Distributed under the GNU License. See LICENSE for more information.
