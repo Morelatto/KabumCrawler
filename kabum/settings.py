@@ -21,7 +21,7 @@ COOKIES_ENABLED = False
 TELNETCONSOLE_ENABLED = False
 
 ITEM_PIPELINES = {
-    'kabum.pipelines.MongoDBBrandCollectionsPipeline': 300,
+    'kabum.pipelines.MongoDBBrandCollectionsPipeline': 100,
 }
 
 MONGODB_URI = ''
