@@ -50,6 +50,9 @@ class KabumSpider(scrapy.Spider):
                 loader.add_value('used', product.get('is_marketplace'))
                 loader.add_value('openbox', product.get('is_openbox'))
                 loader.add_value('available', product.get('available'))
+                loader.add_value('prime', product.get('is_prime'))
+                loader.add_value('free_shipping', product.get('has_free_shipping'))
+                loader.add_value('warranty', product.get('warranty'))
                 loader.add_value('url', f"{SITE_URL}/produto/{product_data.get('id')}")
                 yield loader.load_item()
 
