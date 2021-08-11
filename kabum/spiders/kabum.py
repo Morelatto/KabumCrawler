@@ -1,103 +1,97 @@
-import json
+import urllib.parse
+
 import scrapy
+from itemloaders import ItemLoader
 
-from kabum.items import ProductLoader, PricesLoader, OfferLoader
+from kabum.items import Product, Offer, Prices, PaymentMethod, PaymentInstallment
+from kabum.items import ProductLoader, OfferLoader, PricesLoader, PaymentInstallmentLoader
 
-KABUM = 'kabum.com.br'
+PAGE_SIZE = 100
 
-TEXT_SEL = '::text'
-ATTR_SEL = '::attr(%s)'
-# prod list
-PRODUCT_CATEGORY = '.links_det a' + TEXT_SEL
-PRODUCT_DETAILS = '.listagem-bots > a'
-NEXT_PAGE = '.listagem-paginacao a'
-# prod
-PROD_NAME = '.titulo_det' + TEXT_SEL
-PROD_BRAND = 'meta[itemprop="brand"]' + ATTR_SEL % 'content'
-PROD_STARS = 'meta[itemprop="ratingValue"]' + ATTR_SEL % 'content'
-PROD_REVIEWS = 'meta[itemprop="reviewCount"]' + ATTR_SEL % 'content'
-PROD_COMMENTS = '.opiniao_box .H-estrelas' + ATTR_SEL % 'class'
-PROD_DESC = 'p[itemprop="description"]' + TEXT_SEL
-PROD_SPEC_TABLE = '.content_tab:nth-child(2)'
-# prices
-PROD_PRICE = '.preco_normal' + TEXT_SEL
-PROD_PRICE_OFFER = '.preco_desconto-cm *' + TEXT_SEL
-PROD_PRICE_BOLETO = '.preco_desconto strong' + TEXT_SEL
-PROD_PRICE_BOLETO_OFFER = '.preco_desconto_avista-cm' + TEXT_SEL
-PROD_BOLETO_DISCOUNT = '.preco_desconto font' + TEXT_SEL
-PROD_BOLETO_DISCOUNT_OFFER = '.preco_normal-cm' + TEXT_SEL
-PARCEL_TABLE = '.ParcelamentoCartao ul *' + TEXT_SEL
-PARCEL_TABLE_OFFER = '.ParcelamentoCartao-cm ul *' + TEXT_SEL
-# offer
-OFFER_SOLD = '.q3' + TEXT_SEL
-OFFER_AMOUNT = '.q2' + TEXT_SEL
-OFFER_DISCOUNT = '.q1' + TEXT_SEL
-OFFER_OLD_PRICE = '.preco_antigo-cm' + TEXT_SEL
+SITE_URL = 'https://www.kabum.com.br'
+API_URL = 'https://servicespub.prod.api.aws.grupokabum.com.br/catalog/v1/products-by-category'
 
 
 class KabumSpider(scrapy.Spider):
     name = 'kabum'
-    allowed_domains = [KABUM]
+    parameters = {
+        'page_number': 1,
+        'page_size': PAGE_SIZE,
+        'sort': 'most_searched',
+        'include': 'gift'
+    }
 
-    def __init__(self, cats='', **kwargs):
-        super().__init__(**kwargs)
-        self.urls = cats.split(';')
+    def __init__(self, categories, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.categories = categories.split(',')
 
     def start_requests(self):
-        for url in self.urls:
-            yield scrapy.Request('https://www.{}/{}?ordem=5&limite=100&pagina=1&string='.format(KABUM, url))
+        for category in self.categories:
+            _url = f'{API_URL}/{category}?{urllib.parse.urlencode(self.parameters)}'
+            yield scrapy.Request(_url, meta={'parameters': self.parameters.copy(), 'category': category})
 
-    def parse(self, response):
-        meta = {'cat': response.css(PRODUCT_CATEGORY).getall()}
-        for product in response.css(PRODUCT_DETAILS):
-            meta['id'] = product.attrib['data-id']
-            meta['prod_url'] = product.attrib['href']
-            yield scrapy.Request(product.attrib['href'], self.parse_product, meta=meta)
+    def parse(self, response, **kwargs) -> Product:
+        json_response = response.json()
+        json_data = json_response['data']
+        if json_data:
+            for product_data in json_data:
+                loader = ProductLoader()
+                loader.add_value('id', product_data.get('id'))
+                product = product_data['attributes']
+                loader.add_value('name', product.get('title'))
+                loader.add_value('brand', product.get('manufacturer', {}).get('name'))
+                loader.add_value('category', response.meta['category'])
+                loader.add_value('offer', self.get_offer(product.get('offer')))
+                loader.add_value('prices', self.get_prices(product))
+                loader.add_value('payments', self.get_payments(product.get('payment_methods_default')))
+                loader.add_value('stars', product.get('score_of_ratings'))
+                loader.add_value('ratings', product.get('number_of_ratings'))
+                loader.add_value('images', product.get('images'))
+                loader.add_value('used', product.get('is_marketplace'))
+                loader.add_value('openbox', product.get('is_openbox'))
+                loader.add_value('available', product.get('available'))
+                loader.add_value('url', f"{SITE_URL}/produto/{product_data.get('id')}")
+                yield loader.load_item()
 
-        for url in response.css(NEXT_PAGE):
-            yield scrapy.Request(response.urljoin(url.attrib['href']))
+            response.meta['parameters']['page_number'] += 1
+            next_page = f"{API_URL}/{response.meta['category']}?{urllib.parse.urlencode(response.meta['parameters'])}"
+            yield scrapy.Request(next_page, meta=response.meta)
 
-    def parse_product(self, response):
-        pl = ProductLoader(response=response)
-        pl.add_value('id', response.meta['id'])
-        pl.add_css('name', PROD_NAME)
-        pl.add_css('brand', PROD_BRAND)
-        pl.add_value('category', response.meta['cat'])
+    @classmethod
+    def get_offer(cls, offer) -> Offer:
+        if offer:
+            loader = OfferLoader()
+            loader.add_value('price', offer.get('price'))
+            loader.add_value('price_discount', offer.get('price_with_discount'))
+            loader.add_value('discount_percentage', offer.get('discount_percentage'))
+            loader.add_value('quantity', offer.get('quantity_available'))
+            loader.add_value('start_date', offer.get('starts_at'))
+            loader.add_value('end_date', offer.get('ends_at'))
+            return loader.load_item()
 
-        pl.add_css('stars', PROD_STARS)
-        pl.add_css('ratings', PROD_REVIEWS)
-        pl.add_css('comment_table', PROD_COMMENTS)
+    @classmethod
+    def get_prices(cls, product) -> Prices:
+        loader = PricesLoader()
+        loader.add_value('price', product.get('price'))
+        loader.add_value('price_discount', product.get('price_with_discount'))
+        loader.add_value('discount_percentage', product.get('discount_percentage'))
+        loader.add_value('old_price', product.get('old_price'))
+        return loader.load_item()
 
-        if response.url != response.meta['prod_url']:
-            yield self.get_offer(response)
-        else:
-            self.add_prices(pl)
+    def get_payments(self, payments) -> PaymentMethod:
+        if payments:
+            for payment in payments:
+                loader = ItemLoader(item=PaymentMethod())
+                loader.add_value('method', payment.get('method'))
+                loader.add_value('installments', self.get_installments(payment))
+                yield loader.load_item()
 
-        pl.add_css('description', PROD_DESC)
-        pl.add_css('tech_spec', PROD_SPEC_TABLE + ' p *' + TEXT_SEL)
-        pl.add_css('warranty', PROD_SPEC_TABLE + TEXT_SEL)
-
-        yield pl.load_item()
-
-    def get_offer(self, response):
-        ol = OfferLoader(response=response)
-        ol.add_value('id', response.meta['id'])
-        ol.add_value('end_date', filter(lambda x: x if 'until' in x else None, response.css('script').getall()))
-        ol.add_css('discount', OFFER_DISCOUNT)
-        ol.add_css('amount', OFFER_AMOUNT)
-        ol.add_css('sold', OFFER_SOLD)
-        self.add_prices(ol)
-        return ol.load_item()
-
-    def add_prices(self, loader):
-        pcs = PricesLoader(selector=loader.selector)
-        pcs.add_css('price', PROD_PRICE)
-        pcs.add_css('price', PROD_PRICE_OFFER)
-        pcs.add_css('old_price', OFFER_OLD_PRICE)
-        pcs.add_css('price_boleto', PROD_PRICE_BOLETO)
-        pcs.add_css('price_boleto', PROD_PRICE_BOLETO_OFFER)
-        pcs.add_css('discount_boleto', PROD_BOLETO_DISCOUNT)
-        pcs.add_css('discount_boleto', PROD_BOLETO_DISCOUNT_OFFER)
-        pcs.add_value('parcel_table', loader.selector.css(PARCEL_TABLE).getall())
-        pcs.add_value('parcel_table', loader.selector.css(PARCEL_TABLE_OFFER).getall())
-        loader.add_value('prices', pcs.load_item())
+    @classmethod
+    def get_installments(cls, payment) -> PaymentInstallment:
+        for installment in payment.get('installments', []):
+            loader = PaymentInstallmentLoader()
+            loader.add_value('terms', installment.get('payment_terms'))
+            loader.add_value('installment', installment.get('installment'))
+            loader.add_value('amount', installment.get('amount'))
+            loader.add_value('total', installment.get('total'))
+            yield loader.load_item()
